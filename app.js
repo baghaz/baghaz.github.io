@@ -2,13 +2,11 @@ let db = null;
 
 window.initializeDB = async function () {
     try {
-        // Load sql.js
-        const SQL = await initSqlJs({
-            locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-        });
+        // Memuat sql.js dari CDN dengan benar
+        const SQL = await loadSQLJS();
 
         // Fetch the SQLite database file from GitHub Pages (file statis)
-        const response = await fetch('https://baghaz.github.io/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
+        const response = await fetch('https://baghaz.github.io/db/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
         if (!response.ok) throw new Error('Failed to fetch the database file');
 
         const arrayBuffer = await response.arrayBuffer();
@@ -29,6 +27,22 @@ window.initializeDB = async function () {
     }
 };
 
+// Fungsi untuk memuat sql.js dari CDN
+async function loadSQLJS() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql.js";
+        script.onload = () => {
+            resolve(window.SQL);
+        };
+        script.onerror = () => {
+            reject(new Error('Failed to load sql.js'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// Fungsi untuk menampilkan kategori
 const displayCategories = function () {
     const categoriesTableBody = document.getElementById("categoriesTable").getElementsByTagName("tbody")[0];
 
@@ -53,6 +67,7 @@ const displayCategories = function () {
     }
 };
 
+// Fungsi untuk menampilkan produk
 const displayProducts = function () {
     const productsTableBody = document.getElementById("productsTable").getElementsByTagName("tbody")[0];
 
