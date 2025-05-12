@@ -1,97 +1,117 @@
-let db = null;
+(() => {
+  const status = document.getElementById('status');
+  const sqlInput = document.getElementById('sql-input');
+  const runBtn = document.getElementById('run-query');
+  const resultDiv = document.getElementById('result');
+  const fileInput = document.getElementById('db-file');
 
-// Memuat sql.js dengan WebAssembly
-window.initializeDB = async function () {
+  let db = null;
+  let SQL = null;
+
+  // Load sql.js library
+  status.textContent = 'Loading sql.js...';
+  initSqlJs({
+    locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file
+  }).then(SQLLib => {
+    SQL = SQLLib;
+    status.textContent = 'sql.js loaded. Please select a SQLite database file.';
+    fileInput.disabled = false;
+  }).catch(e => {
+    status.textContent = 'Failed to load sql.js: ' + e.message;
+    fileInput.disabled = true;
+    sqlInput.disabled = true;
+    runBtn.disabled = true;
+  });
+
+  // Handle file selection
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    status.textContent = 'Reading database file...';
+    sqlInput.value = '';
+    resultDiv.textContent = '';
+    sqlInput.disabled = true;
+    runBtn.disabled = true;
+    reader.onload = function() {
+      try {
+        const Uints = new Uint8Array(reader.result);
+        db = new SQL.Database(Uints);
+        status.textContent = `Database loaded: ${file.name}`;
+        sqlInput.disabled = false;
+        runBtn.disabled = false;
+        sqlInput.focus();
+      } catch (err) {
+        status.textContent = 'Error loading database: ' + err.message;
+        db = null;
+        sqlInput.disabled = true;
+        runBtn.disabled = true;
+      }
+    };
+    reader.onerror = function() {
+      status.textContent = 'Error reading file.';
+      db = null;
+      sqlInput.disabled = true;
+      runBtn.disabled = true;
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // Run query handler
+  runBtn.addEventListener('click', () => {
+    if (!db) return;
+    const query = sqlInput.value.trim();
+    resultDiv.textContent = '';
+    if (!query) {
+      status.textContent = 'Please enter a SQL query.';
+      return;
+    }
     try {
-        // Memuat sql.js (WASM) secara dinamis
-        const SQL = await loadSQLJS();
-
-        // Ambil file SQLite dari GitHub Pages (file statis)
-        const response = await fetch('https://github.com/baghaz/baghaz.github.io/tree/a2a5a1cb63577a6e53d3be5df8ff2a2e6e3d361c/db/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
-        if (!response.ok) throw new Error('Failed to fetch the database file');
-
-        const arrayBuffer = await response.arrayBuffer();
-        const uInt8Array = new Uint8Array(arrayBuffer);
-        db = new SQL.Database(uInt8Array);
-
-        console.log('Database loaded from GitHub Pages static file');
-
-        // Fetch and display categories
-        displayCategories();
-
-        // Fetch and display products
-        displayProducts();
-
-    } catch (error) {
-        console.error('Error initializing database:', error);
-        alert('Failed to initialize database from file.');
-    }
-};
-
-// Fungsi untuk memuat sql.js dari CDN (WebAssembly)
-window.loadSQLJS = async function () {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js";  // Menggunakan sql-wasm.js
-        script.onload = () => {
-            resolve(window.SQL);
-        };
-        script.onerror = () => {
-            reject(new Error('Failed to load sql-wasm.js'));
-        };
-        document.head.appendChild(script);
-    });
-}
-
-// Fungsi untuk menampilkan kategori
-window.displayCategories = async function () {
-    const categoriesTableBody = document.getElementById("categoriesTable").getElementsByTagName("tbody")[0];
-
-    const categories = db.exec('SELECT * FROM categories');
-    if (categories.length > 0) {
-        categories[0].values.forEach(row => {
-            const tr = document.createElement('tr');
-            row.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell;
-                tr.appendChild(td);
-            });
-            categoriesTableBody.appendChild(tr);
+      const results = db.exec(query);
+      if (results.length === 0) {
+        resultDiv.textContent = 'Query executed successfully. No rows returned.';
+      } else {
+        // Render results as a table
+        const table = document.createElement('table');
+        // Table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        results[0].columns.forEach(col => {
+          const th = document.createElement('th');
+          th.textContent = col;
+          headerRow.appendChild(th);
         });
-    } else {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 3;
-        td.textContent = 'No categories available';
-        tr.appendChild(td);
-        categoriesTableBody.appendChild(tr);
-    }
-};
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
 
-// Fungsi untuk menampilkan produk
-window.displayProducts = async function () {
-    const productsTableBody = document.getElementById("productsTable").getElementsByTagName("tbody")[0];
-
-    const products = db.exec('SELECT * FROM products');
-    if (products.length > 0) {
-        products[0].values.forEach(row => {
-            const tr = document.createElement('tr');
-            row.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell;
-                tr.appendChild(td);
-            });
-            productsTableBody.appendChild(tr);
+        // Table body
+        const tbody = document.createElement('tbody');
+        results[0].values.forEach(row => {
+          const tr = document.createElement('tr');
+          row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell === null ? 'NULL' : cell;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
         });
-    } else {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 6;
-        td.textContent = 'No products available';
-        tr.appendChild(td);
-        productsTableBody.appendChild(tr);
-    }
-};
+        table.appendChild(tbody);
 
-// Initialize the database when the page is loaded
-window.onload = initializeDB;
+        resultDiv.appendChild(table);
+      }
+      status.textContent = 'Query run successfully.';
+    } catch (err) {
+      status.textContent = 'SQL Error: ' + err.message;
+      resultDiv.textContent = '';
+    }
+  });
+
+  // Allow pressing Enter with Ctrl+Enter or Shift+Enter to run query on textarea
+  sqlInput.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' && (e.ctrlKey || e.shiftKey))) {
+      e.preventDefault();
+      runBtn.click();
+    }
+  });
+})();
+
