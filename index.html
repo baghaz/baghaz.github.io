@@ -3,12 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>SQLite Viewer with sql.js</title>
+  <title>Product List - coebegueDB.sqlite</title>
   <style>
-    /* Reset and base */
-    * {
-      box-sizing: border-box;
-    }
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -18,84 +14,32 @@
       flex-direction: column;
       align-items: center;
       padding: 10px;
-      max-width: 350px;
-      height: 600px;
-      overflow: hidden;
-      user-select: none;
+      min-height: 100vh;
+      box-sizing: border-box;
+      max-width: 100vw;
     }
     header {
       font-size: 1.5rem;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       text-align: center;
       text-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
-    #db-file-label {
-      display: inline-block;
-      padding: 10px 15px;
-      background-color: #5a4ba3;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-bottom: 10px;
-      user-select: none;
-      transition: background-color 0.3s ease;
-    }
-    #db-file-label:hover {
-      background-color: #7d69e3;
-    }
-    #db-file {
-      display: none;
-    }
     #status {
-      font-size: 0.9rem;
+      font-size: 1rem;
       min-height: 1.5rem;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       color: #ffecb3;
       text-align: center;
-      user-select: text;
       word-break: break-word;
-    }
-    textarea, input[type=text] {
-      font-family: monospace;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      padding: 8px;
-      margin-bottom: 10px;
-      width: 100%;
-      resize: vertical;
-    }
-    textarea {
-      height: 100px;
-      min-height: 80px;
-      max-height: 150px;
-    }
-    button {
-      background-color: #7d69e3;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      user-select: none;
-      width: 100%;
-    }
-    button:disabled {
-      background-color: #3a316d;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background-color: #a194f7;
     }
     #result {
       background-color: rgba(255,255,255,0.1);
       border-radius: 8px;
       padding: 10px;
       overflow-x: auto;
-      max-height: 180px;
-      font-size: 0.85rem;
+      max-width: 100vw;
+      font-size: 0.95rem;
       white-space: pre-wrap;
       user-select: text;
     }
@@ -103,16 +47,32 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 6px;
+      background-color: rgba(255,255,255,0.07);
+      color: #fff;
     }
     th, td {
       border: 1px solid rgba(255,255,255,0.3);
       padding: 6px 8px;
       text-align: left;
       max-width: 130px;
-      word-wrap: break-word;
+      word-break: break-word;
     }
     th {
-      background-color: rgba(255,255,255,0.15);
+      background-color: rgba(255,255,255,0.18);
+    }
+    tr:nth-child(even) {
+      background-color: rgba(255,255,255,0.06);
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 0.85rem;
+      }
+      #result {
+        padding: 4px;
+      }
+      th, td {
+        padding: 4px 5px;
+      }
     }
     footer {
       margin-top: auto;
@@ -122,138 +82,95 @@
       user-select: none;
       padding: 8px 0 2px 0;
     }
+    a { color: #b3b0f7; }
   </style>
 </head>
 <body>
-  <header>SQLite Viewer with sql.js</header>
-  
-  <label id="db-file-label" for="db-file" aria-describedby="status">Select SQLite DB File</label>
-  <input type="file" id="db-file" accept=".sqlite,.db,.sqlite3,.bin" />
-  <div id="status" role="status" aria-live="polite"></div>
-  
-  <textarea id="sql-input" placeholder="Enter SQL query here (e.g. SELECT * FROM table)" aria-label="SQL Query Input" disabled></textarea>
-  <button id="run-query" disabled>Run Query</button>
-  
+  <header>Product List from coebegueDB.sqlite</header>
+  <div id="status" role="status" aria-live="polite">Loading sql.js and database...</div>
   <div id="result" aria-live="polite" aria-atomic="true"></div>
-
   <footer>
-    Powered by <a href="https://sql.js.org/" target="_blank" rel="noopener noreferrer" style="color:#b3b0f7;">sql.js</a>
+    Powered by <a href="https://sql.js.org/" target="_blank" rel="noopener noreferrer">sql.js</a>
   </footer>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
   <script>
-    let db = null;
-    let SQL = null;
-    const fileInput = document.getElementById('db-file');
     const status = document.getElementById('status');
-    const sqlInput = document.getElementById('sql-input');
-    const runBtn = document.getElementById('run-query');
     const resultDiv = document.getElementById('result');
 
-    // Initialize sql.js
-    status.textContent = 'Loading sql.js...';
-    initSqlJs({ locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file })
-      .then(SQLLib => {
-        SQL = SQLLib;
-        status.textContent = 'sql.js loaded. Please select a SQLite database file.';
-        fileInput.disabled = false;
-      })
-      .catch(e => {
-        status.textContent = 'Failed to load sql.js: ' + e.message;
-        fileInput.disabled = true;
+    // REPLACE this URL with your raw GitHub file!
+    const DB_URL = "https://raw.githubusercontent.com/your-username/your-repo/main/db/coebegueDB.sqlite";
+
+    let db = null;
+    let SQL = null;
+
+    async function fetchDatabase(url) {
+      status.textContent = "Downloading database file...";
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Database file not found or CORS blocked');
+      const buffer = await response.arrayBuffer();
+      status.textContent = "Database downloaded.";
+      return new Uint8Array(buffer);
+    }
+
+    function renderTable(columns, rows) {
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        headerRow.appendChild(th);
       });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
 
-    // Handle file selection
-    fileInput.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      status.textContent = 'Reading database file...';
-      sqlInput.value = '';
-      resultDiv.textContent = '';
-      sqlInput.disabled = true;
-      runBtn.disabled = true;
-      reader.onload = function() {
-        try {
-          const Uints = new Uint8Array(reader.result);
-          db = new SQL.Database(Uints);
-          status.textContent = `Database loaded: ${file.name}`;
-          sqlInput.disabled = false;
-          runBtn.disabled = false;
-          sqlInput.focus();
-        } catch (err) {
-          status.textContent = 'Error loading database: ' + err.message;
-          db = null;
-          sqlInput.disabled = true;
-          runBtn.disabled = true;
-        }
-      };
-      reader.onerror = function() {
-        status.textContent = 'Error reading file.';
-        db = null;
-        sqlInput.disabled = true;
-        runBtn.disabled = true;
-      };
-      reader.readAsArrayBuffer(file);
-    });
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell === null ? 'NULL' : cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      return table;
+    }
 
-    // Run query handler
-    runBtn.addEventListener('click', () => {
-      if (!db) return;
-      const query = sqlInput.value.trim();
-      resultDiv.textContent = '';
-      if (!query) {
-        status.textContent = 'Please enter a SQL query.';
-        return;
-      }
+    async function loadAndShowProducts() {
       try {
+        status.textContent = "Loading sql.js...";
+        SQL = await initSqlJs({
+          locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file
+        });
+        status.textContent = "Loading database file from GitHub...";
+        const dbData = await fetchDatabase(DB_URL);
+        db = new SQL.Database(dbData);
+        status.textContent = "Database loaded. Querying products...";
+
+        // Query products table with specified columns
+        const query = `
+          SELECT id, name, description, price, stock, category_id
+          FROM products
+          ORDER BY id
+        `;
         const results = db.exec(query);
-        if (results.length === 0) {
-          resultDiv.textContent = 'Query executed successfully. No rows returned.';
+        if (!results || results.length === 0 || !results[0].values.length) {
+          resultDiv.textContent = "No products found.";
         } else {
-          // Render results as a table
-          const table = document.createElement('table');
-          // Table header
-          const thead = document.createElement('thead');
-          const headerRow = document.createElement('tr');
-          results[0].columns.forEach(col => {
-            const th = document.createElement('th');
-            th.textContent = col;
-            headerRow.appendChild(th);
-          });
-          thead.appendChild(headerRow);
-          table.appendChild(thead);
-
-          // Table body
-          const tbody = document.createElement('tbody');
-          results[0].values.forEach(row => {
-            const tr = document.createElement('tr');
-            row.forEach(cell => {
-              const td = document.createElement('td');
-              td.textContent = cell === null ? 'NULL' : cell;
-              tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-          });
-          table.appendChild(tbody);
-
-          resultDiv.appendChild(table);
+          const { columns, values } = results[0];
+          resultDiv.innerHTML = "";
+          resultDiv.appendChild(renderTable(columns, values));
         }
-        status.textContent = 'Query run successfully.';
+        status.textContent = "Product list loaded.";
       } catch (err) {
-        status.textContent = 'SQL Error: ' + err.message;
-        resultDiv.textContent = '';
+        status.textContent = "Error: " + err.message;
+        resultDiv.textContent = "";
       }
-    });
+    }
 
-    // Allow pressing Enter with Ctrl+Enter or Shift+Enter to run query on textarea
-    sqlInput.addEventListener('keydown', e => {
-      if ((e.key === 'Enter' && (e.ctrlKey || e.shiftKey))) {
-        e.preventDefault();
-        runBtn.click();
-      }
-    });
+    loadAndShowProducts();
   </script>
 </body>
 </html>
-
