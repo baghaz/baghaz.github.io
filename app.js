@@ -1,12 +1,13 @@
 let db = null;
 
+// Memuat sql.js dengan WebAssembly
 window.initializeDB = async function () {
     try {
-        // Memuat sql.js dari CDN dengan benar
+        // Memuat sql.js (WASM) secara dinamis
         const SQL = await loadSQLJS();
 
-        // Fetch the SQLite database file from GitHub Pages (file statis)
-        const response = await fetch('https://baghaz.github.io/db/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
+        // Ambil file SQLite dari GitHub Pages (file statis)
+        const response = await fetch('https://github.com/baghaz/baghaz.github.io/tree/a2a5a1cb63577a6e53d3be5df8ff2a2e6e3d361c/db/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
         if (!response.ok) throw new Error('Failed to fetch the database file');
 
         const arrayBuffer = await response.arrayBuffer();
@@ -27,23 +28,23 @@ window.initializeDB = async function () {
     }
 };
 
-// Fungsi untuk memuat sql.js dari CDN
-async function loadSQLJS() {
+// Fungsi untuk memuat sql.js dari CDN (WebAssembly)
+window.loadSQLJS = async function () {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql.js";
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js";  // Menggunakan sql-wasm.js
         script.onload = () => {
             resolve(window.SQL);
         };
         script.onerror = () => {
-            reject(new Error('Failed to load sql.js'));
+            reject(new Error('Failed to load sql-wasm.js'));
         };
         document.head.appendChild(script);
     });
 }
 
 // Fungsi untuk menampilkan kategori
-const displayCategories = function () {
+window.displayCategories = async function () {
     const categoriesTableBody = document.getElementById("categoriesTable").getElementsByTagName("tbody")[0];
 
     const categories = db.exec('SELECT * FROM categories');
@@ -68,7 +69,7 @@ const displayCategories = function () {
 };
 
 // Fungsi untuk menampilkan produk
-const displayProducts = function () {
+window.displayProducts = async function () {
     const productsTableBody = document.getElementById("productsTable").getElementsByTagName("tbody")[0];
 
     const products = db.exec('SELECT * FROM products');
