@@ -8,7 +8,7 @@ window.initializeDB = async function () {
         });
 
         // Fetch the SQLite database file from GitHub Pages (file statis)
-        const response = await fetch('https://baghaz.github.io/db/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
+        const response = await fetch('https://baghaz.github.io/coebegueDB.sqlite');  // Sesuaikan URL dengan lokasi file SQLite kamu
         if (!response.ok) throw new Error('Failed to fetch the database file');
 
         const arrayBuffer = await response.arrayBuffer();
