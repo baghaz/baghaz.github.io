@@ -90,9 +90,9 @@
   <div id="status" role="status" aria-live="polite">Loading sql.js and database...</div>
   <div id="result" aria-live="polite" aria-atomic="true"></div>
   <footer>
-    Powered by <a href="https://sql.js.org/" target="_blank" rel="noopener noreferrer">sql.js</a>
+    Powered by bghz</a>
   </footer>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js"></script>
   <script>
     const status = document.getElementById('status');
     const resultDiv = document.getElementById('result');
@@ -142,7 +142,7 @@
       try {
         status.textContent = "Loading sql.js...";
         SQL = await initSqlJs({
-          locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file
+          locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/' + file
         });
         status.textContent = "Loading database file from GitHub...";
         const dbData = await fetchDatabase(DB_URL);
